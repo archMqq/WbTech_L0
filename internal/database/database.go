@@ -10,11 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type OrderRepository struct {
-	db *sql.DB
-}
-
-func Init(cfg *config.Config) *OrderRepository {
+func Init(cfg *config.Config) *sql.DB {
 	connStr := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		cfg.Postgre.Host, cfg.Postgre.Port, cfg.Postgre.User,
@@ -29,5 +25,5 @@ func Init(cfg *config.Config) *OrderRepository {
 	db.SetMaxIdleConns(2)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	return &OrderRepository{db: db}
+	return db
 }

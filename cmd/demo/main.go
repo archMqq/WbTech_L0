@@ -1,13 +1,30 @@
 package main
 
 import (
-	"L0/internal/api"
 	"L0/internal/config"
 	"L0/internal/database"
+	"L0/internal/handler"
+	"L0/internal/repository"
+	"log"
+	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
 	cfg := config.Load()
-	rep := database.Init(cfg)
-	api.Init(cfg, rep)
+
+	db := database.Init(cfg)
+	defer db.Close()
+
+	orderRepo := repository.NewOrderRepository(db)
+
+	orderHandler := handler.NewOrderHandler(orderRepo)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/orders/{id}", orderHandler.GetOrder).Methods("GET")
+
+	// Запускаем сервер
+	log.Printf("Server starting on :%s", cfg.Port)
+	log.Fatal(http.ListenAndServe(cfg.Port, router))
 }
