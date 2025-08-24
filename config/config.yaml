@@ -1,0 +1,10 @@
+
+storage_path: "./storage/storage.db"
+http_server:
+  port: ":8080"
+postgresql:
+  user: "admin"
+  password: "secretpass"
+  host: "localgost"
+  port: "5432"
+  dbname: "products"
