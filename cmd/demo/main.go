@@ -24,7 +24,6 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/orders/{id}", orderHandler.GetOrder).Methods("GET")
 
-	// Запускаем сервер
 	log.Printf("Server starting on :%s", cfg.Port)
 	log.Fatal(http.ListenAndServe(cfg.Port, router))
 }

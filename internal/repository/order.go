@@ -8,11 +8,69 @@ import (
 )
 
 type OrderRepository struct {
-	db *sql.DB
+	db    *sql.DB
+	cache map[string]*models.Order
 }
 
 func NewOrderRepository(db *sql.DB) *OrderRepository {
-	return &OrderRepository{db: db}
+	repo := &OrderRepository{db: db, cache: make(map[string]*models.Order)}
+
+	if cached, err := repo.GetAllOrders(); err == nil {
+		repo.cache = cached
+	}
+
+	return repo
+}
+
+func (r *OrderRepository) SaveCache(order *models.Order, id string) {
+	r.cache[id] = order
+}
+
+func (r *OrderRepository) GetCached(id string) *models.Order {
+	val, ok := r.cache[id]
+	if !ok {
+		return nil
+	}
+
+	return val
+}
+
+func (r *OrderRepository) GetAllOrders() (map[string]*models.Order, error) {
+	orderUIDs, err := r.getAllOrderUIDs()
+	if err != nil {
+		return nil, err
+	}
+
+	orders := make(map[string]*models.Order)
+	for _, orderUID := range orderUIDs {
+		order, err := r.GetOrderByID(orderUID)
+		if err != nil {
+			return nil, err
+		}
+		orders[orderUID] = order
+	}
+
+	return orders, nil
+}
+
+func (r *OrderRepository) getAllOrderUIDs() ([]string, error) {
+	query := "SELECT order_uid FROM orders ORDER BY date_created DESC"
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orderUIDs []string
+	for rows.Next() {
+		var orderUID string
+		if err := rows.Scan(&orderUID); err != nil {
+			return nil, err
+		}
+		orderUIDs = append(orderUIDs, orderUID)
+	}
+
+	return orderUIDs, nil
 }
 
 func (r *OrderRepository) GetOrderByID(orderUID string) (*models.Order, error) {
@@ -174,7 +232,7 @@ func (r *OrderRepository) getItems(orderUID string) ([]models.Item, error) {
 	return items, nil
 }
 
-func (r *OrderRepository) Save(order *models.Order) error {
+func (r *OrderRepository) SaveOrder(order *models.Order) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

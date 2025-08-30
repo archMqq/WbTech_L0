@@ -20,9 +20,16 @@ func (rh *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
 
-	order, err := rh.repo.GetOrderByID(id)
-	if err != nil {
-		http.Error(w, "Object was not found", http.StatusNotFound)
+	order := rh.repo.GetCached(id)
+	if order == nil {
+		var err error
+
+		order, err = rh.repo.GetOrderByID(id)
+		if err != nil {
+			http.Error(w, "Object was not found", http.StatusNotFound)
+		}
+
+		rh.repo.SaveCache(order, id)
 	}
 
 	w.Header().Set("Content-type", "application/json")
