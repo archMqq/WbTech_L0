@@ -5,6 +5,9 @@ http_server:
 postgresql:
   user: "admin"
   password: "secretpass"
-  host: "localgost"
+  host: "localhost"
   port: "5432"
   dbname: "products"
+kafka:
+  broker: "localhost:9092"
+  topic: "orders"

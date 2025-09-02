@@ -4,6 +4,7 @@ import (
 	"L0/internal/config"
 	"L0/internal/database"
 	"L0/internal/handler"
+	kconsumer "L0/internal/kafka"
 	"L0/internal/repository"
 	"log"
 	"net/http"
@@ -18,6 +19,9 @@ func main() {
 	defer db.Close()
 
 	orderRepo := repository.NewOrderRepository(db)
+
+	reader := kconsumer.InitReader(cfg)
+	go kconsumer.Start(reader, orderRepo)
 
 	orderHandler := handler.NewOrderHandler(orderRepo)
 

@@ -10,6 +10,7 @@ import (
 type Config struct {
 	HttpServer `yaml:"http_server"`
 	Postgre    PostgreCfg `yaml:"postgresql"`
+	Kafka      KafkaCfg   `yaml:"kafka"`
 }
 
 type HttpServer struct {
@@ -22,6 +23,11 @@ type PostgreCfg struct {
 	Host     string `yaml:"host"`
 	Port     string `yaml:"port"`
 	DBName   string `yaml:"db_name"`
+}
+
+type KafkaCfg struct {
+	Broker string `yaml:"broker"`
+	Topic  string `yaml:"topic"`
 }
 
 func Load() *Config {
