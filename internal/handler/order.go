@@ -29,7 +29,7 @@ func (rh *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Object was not found", http.StatusNotFound)
 		}
 
-		rh.repo.SaveCache(order, id)
+		go rh.repo.SaveCache(order, id)
 	}
 
 	w.Header().Set("Content-type", "application/json")
