@@ -5,15 +5,27 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync"
 )
 
 type OrderRepository struct {
-	db    *sql.DB
+	db *sql.DB
+	InMemoryCache
+}
+
+type InMemoryCache struct {
 	cache map[string]*models.Order
+	mutex *sync.RWMutex
 }
 
 func NewOrderRepository(db *sql.DB) *OrderRepository {
-	repo := &OrderRepository{db: db, cache: make(map[string]*models.Order)}
+	repo := &OrderRepository{
+		db: db,
+		InMemoryCache: InMemoryCache{
+			cache: make(map[string]*models.Order),
+			mutex: &sync.RWMutex{},
+		},
+	}
 
 	if cached, err := repo.GetAllOrders(); err == nil {
 		repo.cache = cached
@@ -23,15 +35,23 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 }
 
 func (r *OrderRepository) SaveCache(order *models.Order, id string) {
+	r.mutex.Lock()
+
 	r.cache[id] = order
+
+	r.mutex.Unlock()
 }
 
 func (r *OrderRepository) GetCached(id string) *models.Order {
+	r.mutex.RLock()
+
 	val, ok := r.cache[id]
 	if !ok {
+		r.mutex.RUnlock()
 		return nil
 	}
 
+	r.mutex.RUnlock()
 	return val
 }
 
