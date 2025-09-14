@@ -4,8 +4,6 @@ import (
 	"L0/internal/repository"
 	"encoding/json"
 	"net/http"
-
-	"github.com/gorilla/mux"
 )
 
 type OrderHandler struct {
@@ -17,8 +15,7 @@ func NewOrderHandler(repo *repository.OrderRepository) *OrderHandler {
 }
 
 func (rh *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	id := params["id"]
+	id := r.URL.Query().Get("id")
 
 	order := rh.repo.GetCached(id)
 	if order == nil {

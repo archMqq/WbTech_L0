@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div>
+        <label style="font-size: 16px;">Order ID</label>
+        <input id="orderIdInput"></input>
+        <button id="orderShowBtn" type="button" onclick="reply(orderIdInput.value)">Show</button>
+    </div>
+    <pre id="orderData"> </pre>
+
+    <script type="text/javascript">
+        function reply(order_id) {
+            const output = document.getElementById('orderData');
+
+            fetch(`http://localhost:8080/order?id=${encodeURIComponent(order_id)}`)
+                .then(response => {
+                    if (!response.ok) {
+                    throw new Error(`HTTP ошибка! Код: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    output.textContent = JSON.stringify(data, null, 2)
+                })
+                .catch(error => {
+                    console.error('Ошибка при выполнении запроса:', error);
+                });
+        }
+    </script>
+
+</body>
+</html>

@@ -20,16 +20,21 @@ func Start(reader *kafka.Reader, repo *repository.OrderRepository) {
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
+			log.Printf("error reading kafka message: %s", err)
 			break
 		}
 
 		order := orderToJson(m.Value)
+		if order == nil {
+			log.Print("error json convert")
+		}
+
 		if err := repo.SaveOrder(order); err != nil {
-			log.Fatal("error request to db")
+			log.Fatalf("error request to db: %s", err)
 		}
 	}
 
 	if err := reader.Close(); err != nil {
-		log.Fatal("error closing consumer")
+		log.Printf("error closing consumer")
 	}
 }

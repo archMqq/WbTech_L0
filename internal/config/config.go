@@ -18,11 +18,12 @@ type HttpServer struct {
 }
 
 type PostgreCfg struct {
-	User     string `yaml:"username"`
+	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 	Host     string `yaml:"host"`
 	Port     string `yaml:"port"`
-	DBName   string `yaml:"db_name"`
+	DBName   string `yaml:"dbname"`
+	SSLMode  string `yaml:"sslmode"`
 }
 
 type KafkaCfg struct {

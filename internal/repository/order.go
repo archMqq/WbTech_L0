@@ -4,7 +4,6 @@ import (
 	"L0/internal/database/models"
 	"database/sql"
 	"fmt"
-	"log"
 	"sync"
 )
 
@@ -181,7 +180,7 @@ func (r *OrderRepository) getPayment(transaction string) (*models.Payment, error
 	query := `
 		SELECT transaction, request_id, currency, provider, amount, 
 			   payment_dt, bank, delivery_cost, goods_total, custom_fee
-		FROM payments
+		FROM payment
 		WHERE transaction = $1
 	`
 
@@ -267,7 +266,7 @@ func (r *OrderRepository) SaveOrder(order *models.Order) error {
 		return fmt.Errorf("failed to save order: %w", err)
 	}
 
-	if err := r.saveDeliveryTx(tx, &order.Delivery); err != nil {
+	if err := r.saveDeliveryTx(tx, &order.Delivery, order.OrderUID); err != nil {
 		return fmt.Errorf("failed to save delivery: %w", err)
 	}
 
@@ -275,7 +274,7 @@ func (r *OrderRepository) SaveOrder(order *models.Order) error {
 		return fmt.Errorf("failed to save payment: %w", err)
 	}
 
-	if err := r.saveItemsTx(tx, order.Items); err != nil {
+	if err := r.saveItemsTx(tx, order.Items, order.OrderUID); err != nil {
 		return fmt.Errorf("failed to save items: %w", err)
 	}
 
@@ -283,7 +282,8 @@ func (r *OrderRepository) SaveOrder(order *models.Order) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Printf("order %s saved successfully", order.OrderUID)
+	r.SaveCache(order, order.OrderUID)
+
 	return nil
 }
 
@@ -311,14 +311,14 @@ func (r *OrderRepository) saveOrderTx(tx *sql.Tx, order *models.Order) error {
 	return err
 }
 
-func (r *OrderRepository) saveDeliveryTx(tx *sql.Tx, delivery *models.Delivery) error {
+func (r *OrderRepository) saveDeliveryTx(tx *sql.Tx, delivery *models.Delivery, orderId string) error {
 	query := `
         INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `
 
 	_, err := tx.Exec(query,
-		delivery.OrderUID,
+		orderId,
 		delivery.Name,
 		delivery.Phone,
 		delivery.Zip,
@@ -354,7 +354,7 @@ func (r *OrderRepository) savePaymentTx(tx *sql.Tx, payment *models.Payment) err
 	return err
 }
 
-func (r *OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item) error {
+func (r *OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item, orderId string) error {
 	query := `
         INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, 
                          sale, size, total_price, nm_id, brand, status)
@@ -363,7 +363,7 @@ func (r *OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item) error {
 
 	for _, item := range items {
 		_, err := tx.Exec(query,
-			item.OrderUID,
+			orderId,
 			item.ChrtID,
 			item.TrackNumber,
 			item.Price,

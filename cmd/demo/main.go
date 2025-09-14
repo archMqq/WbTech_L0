@@ -26,8 +26,24 @@ func main() {
 	orderHandler := handler.NewOrderHandler(orderRepo)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/orders/{id}", orderHandler.GetOrder).Methods("GET")
+	router.Use(corsMiddleware)
+	router.HandleFunc("/order", orderHandler.GetOrder).Methods("GET")
 
 	log.Printf("Server starting on :%s", cfg.Port)
 	log.Fatal(http.ListenAndServe(cfg.Port, router))
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
