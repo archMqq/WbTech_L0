@@ -1,0 +1,35 @@
+package validation
+
+import (
+	"reflect"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+)
+
+type OrderValidator struct {
+	validator *validator.Validate
+}
+
+func NewValidator() *OrderValidator {
+	v := validator.New()
+
+	v.RegisterValidation("real_date", validateRealDate)
+
+	return &OrderValidator{v}
+}
+
+func (ov *OrderValidator) Validate(i interface{}) error {
+	return ov.validator.Struct(i)
+}
+
+func validateRealDate(fl validator.FieldLevel) bool {
+	field := fl.Field()
+
+	if field.Type() != reflect.TypeOf(time.Time{}) {
+		return false
+	}
+
+	date := field.Interface().(time.Time)
+	return date.Before(time.Now())
+}
