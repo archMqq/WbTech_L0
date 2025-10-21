@@ -24,9 +24,15 @@ func Start(reader *kafka.Reader, repo *repository.OrderRepository) {
 			break
 		}
 
-		order := orderToJson(m.Value)
-		if order == nil {
-			log.Print("error json convert")
+		order, err := orderToJson(m.Value)
+		if err != nil {
+			log.Printf("error json convert: %s", err)
+			continue
+		}
+
+		if err := repo.Validate(order); err != nil {
+			log.Printf("validate err: %s", err)
+			continue
 		}
 
 		if err := repo.SaveOrder(order); err != nil {
