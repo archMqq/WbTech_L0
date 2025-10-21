@@ -8,6 +8,7 @@ import (
 	"L0/internal/repository"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -18,7 +19,7 @@ func main() {
 	db := database.Init(cfg)
 	defer db.Close()
 
-	orderRepo := repository.NewOrderRepository(db)
+	orderRepo := repository.NewOrderRepository(db, time.Second*5, time.Second*10)
 
 	reader := kconsumer.InitReader(cfg)
 	go kconsumer.Start(reader, orderRepo)

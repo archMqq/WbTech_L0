@@ -2,71 +2,56 @@ package repository
 
 import (
 	"L0/internal/database/models"
+	"L0/internal/validation"
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 )
 
 type OrderRepository struct {
-	db *sql.DB
-	InMemoryCache
+	db    *sql.DB
+	Cache *InMemoryCache
+	validation.OrderValidator
 }
 
-type InMemoryCache struct {
-	cache map[string]*models.Order
-	mutex *sync.RWMutex
-}
-
-func NewOrderRepository(db *sql.DB) *OrderRepository {
+func NewOrderRepository(db *sql.DB, cleanInterval, defaultExpiration time.Duration) *OrderRepository {
 	repo := &OrderRepository{
 		db: db,
-		InMemoryCache: InMemoryCache{
-			cache: make(map[string]*models.Order),
-			mutex: &sync.RWMutex{},
+		Cache: &InMemoryCache{
+			items:             make(map[string]*CacheObject),
+			cleanInterval:     cleanInterval,
+			defaultExpiration: defaultExpiration,
+			mutex:             &sync.RWMutex{},
 		},
+		OrderValidator: *validation.NewValidator(),
 	}
 
-	if cached, err := repo.GetAllOrders(); err == nil {
-		repo.cache = cached
+	repo.Cache.StartCollector()
+
+	if cached, err := repo.GetAllOrdersForCache(); err == nil {
+		repo.Cache.items = cached
 	}
 
 	return repo
 }
 
-func (r *OrderRepository) SaveCache(order *models.Order, id string) {
-	r.mutex.Lock()
-
-	r.cache[id] = order
-
-	r.mutex.Unlock()
-}
-
-func (r *OrderRepository) GetCached(id string) *models.Order {
-	r.mutex.RLock()
-
-	val, ok := r.cache[id]
-	if !ok {
-		r.mutex.RUnlock()
-		return nil
-	}
-
-	r.mutex.RUnlock()
-	return val
-}
-
-func (r *OrderRepository) GetAllOrders() (map[string]*models.Order, error) {
+func (r *OrderRepository) GetAllOrdersForCache() (map[string]*CacheObject, error) {
 	orderUIDs, err := r.getAllOrderUIDs()
 	if err != nil {
 		return nil, err
 	}
 
-	orders := make(map[string]*models.Order)
+	orders := make(map[string]*CacheObject)
 	for _, orderUID := range orderUIDs {
 		order, err := r.GetOrderByID(orderUID)
 		if err != nil {
 			return nil, err
 		}
-		orders[orderUID] = order
+		orders[orderUID] = &CacheObject{
+			value:      order,
+			expiration: time.Now().Add(r.Cache.defaultExpiration).UnixNano(),
+		}
 	}
 
 	return orders, nil
@@ -282,7 +267,7 @@ func (r *OrderRepository) SaveOrder(order *models.Order) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	r.SaveCache(order, order.OrderUID)
+	r.Cache.Set(order, order.OrderUID)
 
 	return nil
 }
