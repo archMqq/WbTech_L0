@@ -1,6 +1,7 @@
 package main
 
 import (
+	"L0/cmd/fake"
 	"L0/internal/config"
 	"L0/internal/database"
 	"L0/internal/handler"
@@ -8,6 +9,7 @@ import (
 	"L0/internal/repository"
 	"L0/internal/services"
 	"L0/internal/validation"
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -26,6 +28,11 @@ func main() {
 	validator := validation.NewValidator()
 
 	service := services.NewOrderService(*orderRepo, *orderCache, validator)
+
+	writer := fake.InitWriter(cfg)
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	go fake.StartFaking(ctx, writer)
 
 	reader := kconsumer.InitReader(cfg)
 	go kconsumer.Start(reader, service)
