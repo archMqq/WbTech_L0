@@ -28,9 +28,9 @@ func main() {
 	service := services.NewOrderService(*orderRepo, *orderCache, validator)
 
 	reader := kconsumer.InitReader(cfg)
-	go kconsumer.Start(reader, orderRepo)
+	go kconsumer.Start(reader, service)
 
-	orderHandler := handler.NewOrderHandler(orderRepo)
+	orderHandler := handler.NewOrderHandler(service)
 
 	router := mux.NewRouter()
 	router.Use(corsMiddleware)
