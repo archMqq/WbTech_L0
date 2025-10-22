@@ -18,6 +18,15 @@ type CacheObject struct {
 	expiration int64
 }
 
+func NewInMemoryCache(cleanInterval, defaultExpiration time.Duration) *InMemoryCache {
+	return &InMemoryCache{
+		items:             make(map[string]*CacheObject),
+		cleanInterval:     cleanInterval,
+		defaultExpiration: defaultExpiration,
+		mutex:             &sync.RWMutex{},
+	}
+}
+
 func (ch *InMemoryCache) StartCollector() {
 	go ch.collect()
 }
@@ -58,7 +67,7 @@ func (ch *InMemoryCache) clean(keys []string) {
 	}
 }
 
-func (c *InMemoryCache) Set(order *models.Order, id string) {
+func (c InMemoryCache) Set(id string, order *models.Order) {
 	chObj := &CacheObject{
 		value:      order,
 		expiration: time.Now().Add(c.defaultExpiration).UnixNano(),
@@ -70,7 +79,7 @@ func (c *InMemoryCache) Set(order *models.Order, id string) {
 	c.items[id] = chObj
 }
 
-func (c *InMemoryCache) Get(id string) *models.Order {
+func (c InMemoryCache) Get(id string) *models.Order {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 

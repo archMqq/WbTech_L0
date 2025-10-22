@@ -2,62 +2,39 @@ package repository
 
 import (
 	"L0/internal/database/models"
-	"L0/internal/validation"
 	"database/sql"
 	"fmt"
-	"sync"
-	"time"
 )
 
 type OrderRepository struct {
-	db    *sql.DB
-	Cache *InMemoryCache
-	validation.OrderValidator
+	db *sql.DB
 }
 
-func NewOrderRepository(db *sql.DB, cleanInterval, defaultExpiration time.Duration) *OrderRepository {
-	repo := &OrderRepository{
-		db: db,
-		Cache: &InMemoryCache{
-			items:             make(map[string]*CacheObject),
-			cleanInterval:     cleanInterval,
-			defaultExpiration: defaultExpiration,
-			mutex:             &sync.RWMutex{},
-		},
-		OrderValidator: *validation.NewValidator(),
-	}
-
-	repo.Cache.StartCollector()
-
-	if cached, err := repo.GetAllOrdersForCache(); err == nil {
-		repo.Cache.items = cached
-	}
+func NewOrderRepository(db *sql.DB) *OrderRepository {
+	repo := &OrderRepository{db: db}
 
 	return repo
 }
 
-func (r *OrderRepository) GetAllOrdersForCache() (map[string]*CacheObject, error) {
+func (r OrderRepository) GetAllOrders() (map[string]*models.Order, error) {
 	orderUIDs, err := r.getAllOrderUIDs()
 	if err != nil {
 		return nil, err
 	}
 
-	orders := make(map[string]*CacheObject)
+	orders := make(map[string]*models.Order)
 	for _, orderUID := range orderUIDs {
 		order, err := r.GetOrderByID(orderUID)
 		if err != nil {
 			return nil, err
 		}
-		orders[orderUID] = &CacheObject{
-			value:      order,
-			expiration: time.Now().Add(r.Cache.defaultExpiration).UnixNano(),
-		}
+		orders[orderUID] = order
 	}
 
 	return orders, nil
 }
 
-func (r *OrderRepository) getAllOrderUIDs() ([]string, error) {
+func (r OrderRepository) getAllOrderUIDs() ([]string, error) {
 	query := "SELECT order_uid FROM orders ORDER BY date_created DESC"
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -77,7 +54,7 @@ func (r *OrderRepository) getAllOrderUIDs() ([]string, error) {
 	return orderUIDs, nil
 }
 
-func (r *OrderRepository) GetOrderByID(orderUID string) (*models.Order, error) {
+func (r OrderRepository) GetOrderByID(orderUID string) (*models.Order, error) {
 	order, err := r.getOrder(orderUID)
 	if err != nil {
 		return nil, err
@@ -104,7 +81,7 @@ func (r *OrderRepository) GetOrderByID(orderUID string) (*models.Order, error) {
 	return order, nil
 }
 
-func (r *OrderRepository) getOrder(orderUID string) (*models.Order, error) {
+func (r OrderRepository) getOrder(orderUID string) (*models.Order, error) {
 	query := `
         SELECT order_uid, track_number, entry, locale, internal_signature, 
                customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard
@@ -134,7 +111,7 @@ func (r *OrderRepository) getOrder(orderUID string) (*models.Order, error) {
 	return &order, nil
 }
 
-func (r *OrderRepository) getDelivery(orderUID string) (*models.Delivery, error) {
+func (r OrderRepository) getDelivery(orderUID string) (*models.Delivery, error) {
 	query := `
 		SELECT name, phone, zip, city, address, region, email
         FROM delivery 
@@ -161,7 +138,7 @@ func (r *OrderRepository) getDelivery(orderUID string) (*models.Delivery, error)
 	return &delivery, nil
 }
 
-func (r *OrderRepository) getPayment(transaction string) (*models.Payment, error) {
+func (r OrderRepository) getPayment(transaction string) (*models.Payment, error) {
 	query := `
 		SELECT transaction, request_id, currency, provider, amount, 
 			   payment_dt, bank, delivery_cost, goods_total, custom_fee
@@ -190,7 +167,7 @@ func (r *OrderRepository) getPayment(transaction string) (*models.Payment, error
 	return &payment, nil
 }
 
-func (r *OrderRepository) getItems(orderUID string) ([]models.Item, error) {
+func (r OrderRepository) getItems(orderUID string) ([]models.Item, error) {
 	query := `
         SELECT chrt_id, track_number, price, rid, name, sale, size, 
                total_price, nm_id, brand, status
@@ -236,7 +213,7 @@ func (r *OrderRepository) getItems(orderUID string) ([]models.Item, error) {
 	return items, nil
 }
 
-func (r *OrderRepository) SaveOrder(order *models.Order) error {
+func (r OrderRepository) SaveOrder(order *models.Order) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -267,12 +244,10 @@ func (r *OrderRepository) SaveOrder(order *models.Order) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	r.Cache.Set(order, order.OrderUID)
-
 	return nil
 }
 
-func (r *OrderRepository) saveOrderTx(tx *sql.Tx, order *models.Order) error {
+func (r OrderRepository) saveOrderTx(tx *sql.Tx, order *models.Order) error {
 	query := `
         INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, 
                           customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard)
@@ -296,7 +271,7 @@ func (r *OrderRepository) saveOrderTx(tx *sql.Tx, order *models.Order) error {
 	return err
 }
 
-func (r *OrderRepository) saveDeliveryTx(tx *sql.Tx, delivery *models.Delivery, orderId string) error {
+func (r OrderRepository) saveDeliveryTx(tx *sql.Tx, delivery *models.Delivery, orderId string) error {
 	query := `
         INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -316,7 +291,7 @@ func (r *OrderRepository) saveDeliveryTx(tx *sql.Tx, delivery *models.Delivery, 
 	return err
 }
 
-func (r *OrderRepository) savePaymentTx(tx *sql.Tx, payment *models.Payment) error {
+func (r OrderRepository) savePaymentTx(tx *sql.Tx, payment *models.Payment) error {
 	query := `
         INSERT INTO payment (transaction, request_id, currency, provider, amount, 
                            payment_dt, bank, delivery_cost, goods_total, custom_fee)
@@ -339,7 +314,7 @@ func (r *OrderRepository) savePaymentTx(tx *sql.Tx, payment *models.Payment) err
 	return err
 }
 
-func (r *OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item, orderId string) error {
+func (r OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item, orderId string) error {
 	query := `
         INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, 
                          sale, size, total_price, nm_id, brand, status)
@@ -367,4 +342,21 @@ func (r *OrderRepository) saveItemsTx(tx *sql.Tx, items []models.Item, orderId s
 	}
 
 	return nil
+}
+
+func (r OrderRepository) OrderExists(orderUID string) (bool, error) {
+	query := `SELECT * FROM orders WHERE order_uid = $1`
+
+	rows, err := r.db.Query(query, orderUID)
+	if err != nil {
+		return false, err
+	}
+
+	defer rows.Close()
+
+	if rows.Next() {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }

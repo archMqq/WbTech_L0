@@ -2,7 +2,7 @@ package kconsumer
 
 import (
 	"L0/internal/config"
-	"L0/internal/repository"
+	"L0/internal/services"
 	"context"
 	"log"
 
@@ -16,7 +16,7 @@ func InitReader(cfg *config.Config) *kafka.Reader {
 	})
 }
 
-func Start(reader *kafka.Reader, repo *repository.OrderRepository) {
+func Start(reader *kafka.Reader, service *services.OrderService) {
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
@@ -26,16 +26,8 @@ func Start(reader *kafka.Reader, repo *repository.OrderRepository) {
 
 		order, err := orderToJson(m.Value)
 		if err != nil {
-			log.Printf("error json convert: %s", err)
-			continue
-		}
-
-		if err := repo.Validate(order); err != nil {
-			log.Printf("validate err: %s", err)
-			continue
-		}
-
-		if err := repo.SaveOrder(order); err != nil {
+			log.Printf("unknown message format: %s", err)
+		} else if err := service.SaveOrder(order); err != nil {
 			log.Fatalf("error request to db: %s", err)
 		}
 	}

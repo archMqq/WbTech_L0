@@ -6,6 +6,8 @@ import (
 	"L0/internal/handler"
 	kconsumer "L0/internal/kafka"
 	"L0/internal/repository"
+	"L0/internal/services"
+	"L0/internal/validation"
 	"log"
 	"net/http"
 	"time"
@@ -19,7 +21,11 @@ func main() {
 	db := database.Init(cfg)
 	defer db.Close()
 
-	orderRepo := repository.NewOrderRepository(db, time.Second*5, time.Second*10)
+	orderRepo := repository.NewOrderRepository(db)
+	orderCache := repository.NewInMemoryCache(time.Second*5, time.Second*10)
+	validator := validation.NewValidator()
+
+	service := services.NewOrderService(*orderRepo, *orderCache, validator)
 
 	reader := kconsumer.InitReader(cfg)
 	go kconsumer.Start(reader, orderRepo)
