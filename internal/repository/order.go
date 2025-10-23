@@ -4,6 +4,7 @@ import (
 	"L0/internal/database/models"
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 type OrderRepository struct {
@@ -220,7 +221,9 @@ func (r OrderRepository) SaveOrder(order *models.Order) error {
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if err = tx.Rollback(); err != nil {
+				log.Printf("error transaction with orderUID %s rollback : %s", order.OrderUID, err)
+			}
 		}
 	}()
 

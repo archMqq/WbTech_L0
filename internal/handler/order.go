@@ -3,6 +3,7 @@ package handler
 import (
 	"L0/internal/services"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -20,8 +21,12 @@ func (rh *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	order, err := rh.service.GetOrder(id)
 	if err != nil {
 		http.Error(w, "Object was not found", http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(order)
+	if err := json.NewEncoder(w).Encode(order); err != nil {
+		log.Printf("error order encoding: %s", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }

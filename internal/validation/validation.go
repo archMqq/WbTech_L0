@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"log"
 	"reflect"
 	"time"
 
@@ -14,7 +15,9 @@ type OrderValidator struct {
 func NewValidator() *OrderValidator {
 	v := validator.New()
 
-	v.RegisterValidation("real_date", validateRealDate)
+	if err := v.RegisterValidation("real_date", validateRealDate); err != nil {
+		log.Printf("error adding 'real_date' validation: %s", err)
+	}
 
 	return &OrderValidator{v}
 }
