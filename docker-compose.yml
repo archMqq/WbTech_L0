@@ -17,11 +17,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_NUM_PARTITIONS: 1
     healthcheck:
       test: [
         "CMD", "sh", "-c", 
-        "kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -q orders || kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1"
+        "kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -q orders || kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1"
       ]
       interval: 10s
       timeout: 20s

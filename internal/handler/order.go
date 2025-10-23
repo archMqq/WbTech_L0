@@ -20,6 +20,7 @@ func (rh *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := rh.service.GetOrder(id)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Object was not found", http.StatusNotFound)
 		return
 	}

@@ -35,7 +35,6 @@ func StartFaking(ctx context.Context, k *kafka.Writer) {
 			}
 
 			message := kafka.Message{
-				Topic: k.Topic,
 				Key:   []byte(fakeObj.OrderUID),
 				Value: []byte(jsonData),
 			}
@@ -43,6 +42,8 @@ func StartFaking(ctx context.Context, k *kafka.Writer) {
 			err = k.WriteMessages(ctx, message)
 			if err != nil {
 				log.Printf("error writing fake to kafka: %s", err)
+			} else {
+				log.Printf("wrote message with uid: %s: ", fakeObj.OrderUID)
 			}
 		}
 	}

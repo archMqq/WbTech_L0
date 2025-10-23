@@ -27,6 +27,7 @@ func (r OrderRepository) GetAllOrders() (map[string]*models.Order, error) {
 	for _, orderUID := range orderUIDs {
 		order, err := r.GetOrderByID(orderUID)
 		if err != nil {
+			log.Println(orderUID)
 			return nil, err
 		}
 		orders[orderUID] = order
@@ -67,7 +68,7 @@ func (r OrderRepository) GetOrderByID(orderUID string) (*models.Order, error) {
 	}
 	order.Delivery = *delivery
 
-	payment, err := r.getPayment(order.TrackNumber)
+	payment, err := r.getPayment(order.OrderUID)
 	if err != nil {
 		return nil, err
 	}
